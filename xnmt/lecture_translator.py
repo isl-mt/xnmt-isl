@@ -37,9 +37,11 @@ class OnlineTranslator(object):
 if __name__ == '__main__':
   sys.stdout.flush()
   t = OnlineTranslator()
-  while True:
-    line = sys.stdin.readline()
-    print(t.translate(line))
-    sys.stdout.flush()
+  # while True:
+  #   line = sys.stdin.readline()
+  #   print(t.translate(line))
+  #   sys.stdout.flush()
 
+  for line in sys.stdin:
+    sys.stdout.write(t.translate(line) + "\n")
   # sys.exit(OnlineTranslator().translate("hello world"))
