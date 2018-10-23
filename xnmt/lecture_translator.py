@@ -2,24 +2,16 @@ import datetime
 import socket
 import sys
 
-from xnmt import batchers, event_trigger, logger, tee
+from xnmt import batchers, event_trigger
 from xnmt.param_collections import ParamManager
 from xnmt.persistence import initialize_if_needed, YamlPreloader, LoadSerialized
 
 class OnlineTranslator(object):
-  def __init__(self, model_file="/model/xnmt.mod", log_file="/tmp/xnmt.log"):
-  # def __init__(self, model_file="examples/models/standard.mod", log_file="/tmp/xnmt.log"):
+  # def __init__(self, model_file="/model/xnmt.mod", log_file="/tmp/xnmt.log"):
+  def __init__(self, model_file="examples/models/standard.mod"):
 
-    # exp_dir = os.path.dirname(__file__)
     exp_dir = "/tmp/"
     exp_name = f"xnmt-lt-{socket.gethostname()}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
-    #log_file = f"{exp_dir}/logs/{exp_name}.log"
-
-    tee.set_out_file(log_file, exp_name)
-    logger.info(
-      f"running XNMT revision {tee.get_git_revision()} "
-      f"on {socket.gethostname()} "
-      f"on {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
     ParamManager.init_param_col()
 
@@ -46,11 +38,8 @@ if __name__ == '__main__':
   sys.stdout.flush()
   t = OnlineTranslator()
   while True:
-    #    sys.stderr.write("Waiting for data\n");
     line = sys.stdin.readline()
-    #    sys.stderr.write("Input: "+line+"\n");
     print(t.translate(line))
-    #    sys.stderr.write("Translation done\n");
     sys.stdout.flush()
 
   # sys.exit(OnlineTranslator().translate("hello world"))
