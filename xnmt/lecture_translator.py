@@ -32,7 +32,7 @@ class OnlineTranslator(object):
     translated_str = self.loaded_experiment.model.generate(src=inp_sent_batch,
                                                            search_strategy=self.loaded_experiment.model.inference.search_strategy)[0]
     self.idx += 1
-    return translated_str
+    return translated_str.sent_str()
 
 if __name__ == '__main__':
   sys.stdout.flush()
@@ -43,5 +43,5 @@ if __name__ == '__main__':
   #   sys.stdout.flush()
 
   for line in sys.stdin:
-    sys.stdout.write(t.translate(line) + "\n")
+    sys.stdout.write(f"{t.translate(line)}\n")
   # sys.exit(OnlineTranslator().translate("hello world"))
