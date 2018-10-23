@@ -7,8 +7,8 @@ from xnmt.param_collections import ParamManager
 from xnmt.persistence import initialize_if_needed, YamlPreloader, LoadSerialized
 
 class OnlineTranslator(object):
-  # examples/models/standard.mod
   def __init__(self, model_file="/model/xnmt.mod", log_file="/tmp/xnmt.log"):
+  # def __init__(self, model_file="examples/models/standard.mod", log_file="/tmp/xnmt.log"):
 
     # exp_dir = os.path.dirname(__file__)
     exp_dir = "/tmp/"
@@ -43,4 +43,14 @@ class OnlineTranslator(object):
     return translated_str
 
 if __name__ == '__main__':
-  sys.exit(OnlineTranslator().translate("hello world"))
+  sys.stdout.flush()
+  t = OnlineTranslator()
+  while True:
+    #    sys.stderr.write("Waiting for data\n");
+    line = sys.stdin.readline()
+    #    sys.stderr.write("Input: "+line+"\n");
+    print(t.translate(line))
+    #    sys.stderr.write("Translation done\n");
+    sys.stdout.flush()
+
+  # sys.exit(OnlineTranslator().translate("hello world"))

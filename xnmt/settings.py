@@ -63,6 +63,14 @@ class Unittest(Standard):
   DEFAULT_LOG_PATH = "test/tmp/{EXP}.log"
   DEFAULT_REPORT_PATH = "test/tmp/{EXP}.report"
 
+class LectureTranslator(Standard):
+  OVERWRITE_LOG = True
+  RESOURCE_WARNINGS = False
+  LOG_LEVEL_CONSOLE = "WARNING"
+  DEFAULT_MOD_PATH = "/tmp/{EXP}.mod"
+  DEFAULT_LOG_PATH = "/tmp/{EXP}.log"
+  DEFAULT_REPORT_PATH = "/tmp/{EXP}.report"
+
 class SettingsAccessor(object):
   def __getattr__(self, item):
     if _active is None:
@@ -72,10 +80,10 @@ class SettingsAccessor(object):
 settings = SettingsAccessor()
 
 def _resolve_active_settings():
-  # use command line argument, if not given use environment var, if not given us 'standard'
+  # use command line argument, if not given use environment var, if not given use 'lt'
   # overwrite with environment variables if present.
   global _active
-  settings_alias = "standard"
+  settings_alias = "lt"
   settings_alias = os.environ.get("XNMT_SETTINGS", default=settings_alias)
   for arg in sys.argv:
     if arg.startswith("--settings"):
@@ -94,4 +102,5 @@ _aliases = {
   "debug": Debug,
   "settings.unittest" : Unittest,
   "unittest": Unittest,
+  "lt": LectureTranslator,
 }
