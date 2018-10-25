@@ -9,7 +9,7 @@ Installation and Usage
 
 Requires Python 3.6.
 
-Before running *xnmt*, install the required packages, including `DyNet <http://github.com/clab/dynet>`_,
+Before running *xnmt*, install the required packages, including [DyNet](<http://github.com/clab/dynet>),
 by running ``pip install -r requirements.txt``.
 
 Next, install *xnmt* by running ``python setup.py develop``.
@@ -32,8 +32,8 @@ Available command line interfaces:
 Example and Recipes
 -------------------
 
-* The ``examples/`` subfolder contains basic example configurations.
-* The ``recipes/`` subfolder contains full-size model trainings on common benchmark data.
+* The [examples/](examples/README.md) subfolder contains basic example configurations.
+* The [recipes/](recipes/README.md) subfolder contains full-size model trainings on common benchmark data.
 * Unit tests can be run from the main directory: ``python -m unittest``
 
 More information can be found in the [documentation](http://xnmt.readthedocs.io).
