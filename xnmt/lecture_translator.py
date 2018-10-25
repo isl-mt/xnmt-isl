@@ -7,8 +7,8 @@ from xnmt.param_collections import ParamManager
 from xnmt.persistence import initialize_if_needed, YamlPreloader, LoadSerialized
 
 class OnlineTranslator(object):
-  # def __init__(self, model_file="/model/xnmt.mod", log_file="/tmp/xnmt.log"):
-  def __init__(self, model_file="examples/models/standard.mod"):
+  def __init__(self, model_file="/model/xnmt.mod", log_file="/tmp/xnmt.log"):
+  # def __init__(self, model_file="examples/models/standard.mod"):
 
     exp_dir = "/tmp/"
     exp_name = f"xnmt-lt-{socket.gethostname()}-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
@@ -37,11 +37,16 @@ class OnlineTranslator(object):
 if __name__ == '__main__':
   sys.stdout.flush()
   t = OnlineTranslator()
-  # while True:
-  #   line = sys.stdin.readline()
-  #   print(t.translate(line))
-  #   sys.stdout.flush()
+  while True:
+    line = sys.stdin.readline()
+    #sys.stderr.write(f"got input: {line}\n")
+    translation = t.translate(line)
+    #sys.stderr.write(f"translated into: {translation}\n")
+    print(translation)
+    sys.stdout.flush()
 
-  for line in sys.stdin:
-    sys.stdout.write(f"{t.translate(line)}\n")
-  # sys.exit(OnlineTranslator().translate("hello world"))
+#  for line in sys.stdin:
+#    sys.stderr.write(f"got input: {line}\n")
+#    translation = t.translate(line)
+#    sys.stderr.write(f"translated into: {translation}\n")
+#    sys.stdout.write(f"{translation}\n")OnlineTranslator().translate("hello world"))
