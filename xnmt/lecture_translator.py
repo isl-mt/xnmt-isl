@@ -7,7 +7,7 @@ from xnmt.param_collections import ParamManager
 from xnmt.persistence import initialize_if_needed, YamlPreloader, LoadSerialized
 
 class OnlineTranslator(object):
-  def __init__(self, model_file="/model/xnmt.mod", log_file="/tmp/xnmt.log"):
+  def __init__(self, model_file="/model/xnmt.mod"):
   # def __init__(self, model_file="examples/models/standard.mod"):
 
     exp_dir = "/tmp/"
