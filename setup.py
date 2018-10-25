@@ -40,9 +40,9 @@ else: # develop mode
 setup(
   name='xnmt',
   version='0.0.1',
-  description='eXtensible Neural Machine Translation',
-  author='neulab',
-  url='https://github.com/neulab/xnmt',
+  description='[ISL] eXtensible Neural Machine Translation',
+  author='ISL',
+  url='https://github.com/isl-mt/xnmt-isl',
   license='Apache License',
   install_requires=install_requires,
   packages=find_packages(exclude=['test*', 'xnmt.cython', 'xnmt.test']),
@@ -50,8 +50,8 @@ setup(
   python_requires='>=3.6',
   project_urls={
     'Documentation': 'http://xnmt.readthedocs.io/en/latest/',
-    'Source': 'https://github.com/neulab/xnmt',
-    'Tracker': 'https://github.com/neulab/xnmt/issues',
+    'Source': 'https://github.com/isl-mt/xnmt-isl',
+    'Tracker': 'https://github.com/isl-mt/xnmt-isl/issues',
   },
   entry_points={
     'console_scripts': [
