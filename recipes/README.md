@@ -9,7 +9,7 @@ Basic recipes:
 - [las-tedlium](las-tedlium/): An LSTM-based attentional ASR on English TEDLIUM data.
 
 Advanced recipes:
-- [self-attentional-acoustic-models](self-attentional-acoustic-models/): English ASR using self-attentional acoustic models, trained on TEDLIUM.
+- [self-att-acoustic-models](self-att-acoustic-models/): English ASR using self-attentional acoustic models, trained on TEDLIUM.
 
 TODO:
 - ``lat2seq``
