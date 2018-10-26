@@ -1,0 +1,118 @@
+# Trains a lattice-to-sequence model by pretraining on sequential data (for fast convergence) and then finetuning on
+# lattices.
+lattice-multitask: !Experiment
+  exp_global: !ExpGlobal
+    default_layer_dim: 512
+    dropout: 0.3
+    placeholders:
+      DATA_LDC: /home/msperber/data/joshua-decoder-fisher-callhome-corpus-e1db8d6/corpus/ldc.xnmt
+      DATA_OUT: /project/iwslt2015b/project/nmt-audio/exp-xnmt/19.latt-sa/out
+  preproc: !PreprocRunner
+    overwrite: False
+    tasks:
+    - !PreprocExtract
+      in_files:
+      - /home/msperber/data/joshua-decoder-fisher-callhome-corpus-e1db8d6/corpus/plf/fisher_train.es
+      - /home/msperber/data/joshua-decoder-fisher-callhome-corpus-e1db8d6/corpus/plf/fisher_dev.es
+      - /home/msperber/data/joshua-decoder-fisher-callhome-corpus-e1db8d6/corpus/plf/fisher_test.es
+      out_files:
+      - '{DATA_OUT}/fisher_train.es.xlat'
+      - '{DATA_OUT}/fisher_dev.es.xlat'
+      - '{DATA_OUT}/fisher_test.es.xlat'
+      specs: !LatticeFromPlfExtractor {}
+  train: !SerialMultiTaskTrainingRegimen
+    trainer: !AdamTrainer
+      alpha: 0.0003
+    tasks:
+    - !SimpleTrainingTask
+      name: seq_pretrain
+      run_for_epochs: 50
+      batcher: !SrcBatcher
+        batch_size: 128
+      restart_trainer: True
+      lr_decay: 0.8
+      patience: 5
+      src_file: '{DATA_LDC}/fisher_train.es'
+      trg_file: '{DATA_LDC}/fisher_train.en'
+      model: !DefaultTranslator
+        src_embedder: !SimpleWordEmbedder
+          _xnmt_id: src_embedder
+          vocab: !Ref { name: src_vocab }
+        encoder: !BiLatticeLSTMTransducer
+          _xnmt_id: encoder
+          layers: 2
+        attender: !LatticeBiasedMlpAttender
+          _xnmt_id: attender
+        trg_embedder: !SimpleWordEmbedder
+          _xnmt_id: trg_embedder
+          vocab: !Ref { name: trg_vocab }
+        decoder: !AutoRegressiveDecoder
+          _xnmt_id: decoder
+          rnn: !UniLSTMSeqTransducer
+            layers: 1
+          transform: !AuxNonLinear
+            output_dim: 512
+            activation: 'tanh'
+          bridge: !CopyBridge {}
+          scorer: !Softmax
+            vocab: !Ref { name: trg_vocab }
+        src_reader: !LatticeReader
+          text_input: True
+          vocab: !Vocab
+            _xnmt_id: src_vocab
+            vocab_file: '{DATA_OUT}/train.src.vocab'
+        trg_reader: !PlainTextReader
+          _xnmt_id: trg_reader
+          vocab: !Vocab
+            _xnmt_id: trg_vocab
+            vocab_file: '{DATA_OUT}/train.trg.vocab'
+      dev_tasks:
+        - !AccuracyEvalTask
+          eval_metrics: bleu
+          src_file: '{DATA_LDC}/fisher_dev.es'
+          ref_file: '{DATA_LDC}/fisher_dev.en.0'
+          hyp_file: '{EXP_DIR}/hyp/{EXP}.dev_pretrain_hyp'
+          model: !Ref { path: train.tasks.0.model }
+          inference: !Ref { path: train.tasks.0.model.inference }
+        - !LossEvalTask
+          src_file: '{DATA_LDC}/fisher_dev.es'
+          ref_file: '{DATA_LDC}/fisher_dev.en.0'
+          model: !Ref { path: train.tasks.0.model }
+    - !SimpleTrainingTask
+      name: lattice_finetune
+      run_for_epochs: 1
+      batcher: !SrcBatcher
+        batch_size: 1
+      src_file: '{DATA_OUT}/fisher_train.es.xlat'
+      trg_file: '{DATA_LDC}/fisher_train.en'
+      model: !DefaultTranslator
+        src_embedder: !Ref { name: src_embedder }
+        encoder: !Ref { name: encoder }
+        attender: !Ref { name: attender }
+        trg_embedder: !Ref { name: trg_embedder }
+        decoder: !Ref { name: decoder }
+        src_reader: !LatticeReader
+          vocab: !Vocab
+            vocab_file: examples/data/fisher_dev.es.vocab
+        trg_reader: !Ref { name: trg_reader }
+      dev_tasks:
+        - !AccuracyEvalTask
+          eval_metrics: bleu
+          src_file: '{DATA_OUT}/fisher_dev.es.xlat'
+          ref_file: '{DATA_LDC}/fisher_dev.en.0'
+          hyp_file: '{EXP_DIR}/hyp/{EXP}.dev_hyp'
+          model: !Ref { path: train.tasks.1.model }
+          inference: !Ref { path: train.tasks.1.model.inference }
+        - !LossEvalTask
+          src_file: '{DATA_OUT}/fisher_dev.es.xlat'
+          ref_file: '{DATA_LDC}/fisher_dev.en.0'
+          model: !Ref { path: train.tasks.1.model }
+          batcher: !SrcBatcher { batch_size: 1 }
+  evaluate:
+    - !AccuracyEvalTask
+      eval_metrics: bleu
+      src_file: '{DATA_OUT}/fisher_test.es.xlat'
+      ref_file: '{DATA_LDC}/fisher_test.en.0'
+      hyp_file: '{EXP_DIR}/hyp/{EXP}.eval_hyp'
+      model: !Ref { path: train.tasks.1.model }
+      inference: !Ref { path: train.tasks.1.model.inference }

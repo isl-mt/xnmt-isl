@@ -8,6 +8,6 @@ Training is performed on Spanish-to-English Fisher data.
 How to run
 
     # Train model
-    xnmt --dynet-gpu ./recipe.yaml
+    xnmt --dynet-gpu --dynet-autobatch 1 ./recipe.yaml
 
-Results can be found in the paper.
+Note that the autobatch option considerably speeds up training on lattices, but requires additional memory.
