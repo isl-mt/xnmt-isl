@@ -36,4 +36,4 @@ Example and Recipes
 * The [recipes/](recipes/README.md) subfolder contains full-size model trainings on common benchmark data.
 * Unit tests can be run from the main directory: ``python -m unittest``
 
-More information can be found in the [documentation](http://xnmt.readthedocs.io).
+More information can be found in the [documentation](docs/xnmt.pdf).
