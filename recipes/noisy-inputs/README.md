@@ -5,6 +5,7 @@ Sperber et al.: Toward Robust Neural Machine Translation for Noisy Input Sequenc
 
 This can be done as a preprocessing step by calling the following script on the source-side training texts:
 
-    xnmt --dynet-gpu ./recipe.yaml
+    python script/custom/perturb_seq.py 0.05 examples/data/dev.en
 
-Results can be found in the paper.
+This causes 5% of perturbation which is usually a safe value to use.
+
