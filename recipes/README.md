@@ -12,6 +12,4 @@ Advanced recipes:
 - [self-att-acoustic-models](self-att-acoustic-models/): English ASR using self-attentional acoustic models, trained on TEDLIUM.
 - [lattice-to-sequence](lattice-to-sequence/): Lattice-to-Sequence model on Spanish-English Fisher data, using the LatticeLSTM as encoder
 - [noisy-inputs](noisy-inputs/): Add noise to textual MT training data to improve robustness against ASR errors.
-
-TODO:
-- ``e2e speech translation``
+- [e2e-speech-translation](e2e-speech-translation/): End-to-end models for speech translation that directly produce translations from audio inputs. 
