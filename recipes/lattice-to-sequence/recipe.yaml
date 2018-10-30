@@ -1,13 +1,25 @@
 # Trains a lattice-to-sequence model by pretraining on sequential data (for fast convergence) and then finetuning on
 # lattices.
+#
+# This model considers lattice scores by biasing the attention (which improves accuracy a lot), but does not use
+# lattice scores in the lattice LSTM, nor the trainable inverted temperatures (which yielded only minor gains).
+#
 lattice-multitask: !Experiment
+
   exp_global: !ExpGlobal
+
+    # general model settings
     default_layer_dim: 512
     dropout: 0.3
+
     placeholders:
+      # Fisher/Callhome Spanish-English Speech Translation corpus
       DATA_LDC: /home/msperber/data/joshua-decoder-fisher-callhome-corpus-e1db8d6/corpus/ldc.xnmt
       DATA_OUT: /project/iwslt2015b/project/nmt-audio/exp-xnmt/19.latt-sa/out
+
   preproc: !PreprocRunner
+    # Convert edge-labeled Kaldi lattices in PLF format to the required node-labeled format.
+    # Also take care of computing lattice scores normalized in forward and backward directions as well as marginals
     overwrite: False
     tasks:
     - !PreprocExtract
@@ -20,28 +32,34 @@ lattice-multitask: !Experiment
       - '{DATA_OUT}/fisher_dev.es.xlat'
       - '{DATA_OUT}/fisher_test.es.xlat'
       specs: !LatticeFromPlfExtractor {}
+
   train: !SerialMultiTaskTrainingRegimen
+
     trainer: !AdamTrainer
       alpha: 0.0003
+
     tasks:
-    - !SimpleTrainingTask
+    - !SimpleTrainingTask # pretraining task on sequential clean data
       name: seq_pretrain
-      run_for_epochs: 50
       batcher: !SrcBatcher
         batch_size: 128
+
+      src_file: '{DATA_LDC}/fisher_train.es'
+      trg_file: '{DATA_LDC}/fisher_train.en'
+
+      run_for_epochs: 50
       restart_trainer: True
       lr_decay: 0.8
       patience: 5
-      src_file: '{DATA_LDC}/fisher_train.es'
-      trg_file: '{DATA_LDC}/fisher_train.en'
-      model: !DefaultTranslator
+
+      model: !DefaultTranslator # standard translation model except for the encoder and attention modules.
         src_embedder: !SimpleWordEmbedder
           _xnmt_id: src_embedder
           vocab: !Ref { name: src_vocab }
-        encoder: !BiLatticeLSTMTransducer
+        encoder: !BiLatticeLSTMTransducer # Lattice LSTM as defined in the paper
           _xnmt_id: encoder
           layers: 2
-        attender: !LatticeBiasedMlpAttender
+        attender: !LatticeBiasedMlpAttender # Bias the attention to focus on confident words
           _xnmt_id: attender
         trg_embedder: !SimpleWordEmbedder
           _xnmt_id: trg_embedder
@@ -66,7 +84,8 @@ lattice-multitask: !Experiment
           vocab: !Vocab
             _xnmt_id: trg_vocab
             vocab_file: '{DATA_OUT}/train.trg.vocab'
-      dev_tasks:
+
+      dev_tasks: # dev checkpoints to determine learning schedule and early stopping
         - !AccuracyEvalTask
           eval_metrics: bleu
           src_file: '{DATA_LDC}/fisher_dev.es'
@@ -78,14 +97,18 @@ lattice-multitask: !Experiment
           src_file: '{DATA_LDC}/fisher_dev.es'
           ref_file: '{DATA_LDC}/fisher_dev.en.0'
           model: !Ref { path: train.tasks.0.model }
-    - !SimpleTrainingTask
+
+    - !SimpleTrainingTask # finetuning task on ASR lattice outputs
       name: lattice_finetune
-      run_for_epochs: 1
       batcher: !SrcBatcher
         batch_size: 1
+
+      run_for_epochs: 1 # only 1 epoch to keep training time down
+
       src_file: '{DATA_OUT}/fisher_train.es.xlat'
       trg_file: '{DATA_LDC}/fisher_train.en'
-      model: !DefaultTranslator
+
+      model: !DefaultTranslator # uses the same model, except that the source reader now reads lattices instead of text
         src_embedder: !Ref { name: src_embedder }
         encoder: !Ref { name: encoder }
         attender: !Ref { name: attender }
@@ -95,7 +118,8 @@ lattice-multitask: !Experiment
           vocab: !Vocab
             vocab_file: examples/data/fisher_dev.es.vocab
         trg_reader: !Ref { name: trg_reader }
-      dev_tasks:
+
+      dev_tasks: # dev checkpoints to determine learning schedule and early stopping
         - !AccuracyEvalTask
           eval_metrics: bleu
           src_file: '{DATA_OUT}/fisher_dev.es.xlat'
@@ -108,7 +132,8 @@ lattice-multitask: !Experiment
           ref_file: '{DATA_LDC}/fisher_dev.en.0'
           model: !Ref { path: train.tasks.1.model }
           batcher: !SrcBatcher { batch_size: 1 }
-  evaluate:
+
+  evaluate: # evaluate final model on lattice inputs
     - !AccuracyEvalTask
       eval_metrics: bleu
       src_file: '{DATA_OUT}/fisher_test.es.xlat'
