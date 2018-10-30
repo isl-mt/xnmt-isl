@@ -1,4 +1,10 @@
 # coding=utf-8
+
+"""
+This is the LT runtime binding, designed to make the ISL run-time variants of OpenNMT-py and XNMT swappable so that we
+can load models trained with either toolkit in a seemless fashion via the lecture translator.
+"""
+
 import datetime
 import socket
 import sys
