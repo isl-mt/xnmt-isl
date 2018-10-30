@@ -44,12 +44,12 @@ recipe4-twostage-improved: !Experiment
         dev_every: *DEV_EVERY
 
         # training data
-        max_src_len: 1500
-        max_trg_len: 350
         src_file: ['{DATA_EN}/fisher_cmvn_fbank40_train.h5', '{DATA}/fisher_train.es_filt.proc.noid']
         trg_file: '{DATA_EN}/fisher_train.en_filt.proc.noid'
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
         sample_train_sents: *SAMPLE_TRAIN_SENTS
+        max_src_len: 1500 # exclude long sentences from training
+        max_trg_len: 350
 
         # learning schedule and early stopping
         lr_decay: 0.5
@@ -66,17 +66,17 @@ recipe4-twostage-improved: !Experiment
           overwrite:
           - path: encoder.mode
             val: ~
-          - path: encoder.mode_transduce
+          - path: encoder.mode_transduce # modified two-stage model: feed context vectors to translation stage
             val: split
-          - path: encoder.mode_translate
+          - path: encoder.mode_translate # teacher forcing mode
             val: teacher
-          - path: encoder.dropout_dec_state
+          - path: encoder.dropout_dec_state # drop out decoder states to reduce error propagation
             val: 0.5
           - path: encoder.split_context_transform
             val: !MLP {}
-          - path: encoder.split_dual
+          - path: encoder.split_dual # dropped out cross connections, context vectors w/o dropout
             val: [0.0, 0.5]
-          - path: encoder.split_regularizer
+          - path: encoder.split_regularizer # additional loss to make LSTM inputs similar
             val: 1.0
           - path: encoder.transducer_loss
             val: False
@@ -116,16 +116,16 @@ recipe4-twostage-improved: !Experiment
 
         name: '{EXP}.asr'
 
-        max_src_len: 1500
-        max_trg_len: 350
         src_file: '{DATA_EN}/fisher_cmvn_fbank40_train.h5'
         trg_file: '{DATA}/fisher_train.es_filt.proc.noid'
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
         sample_train_sents: *SAMPLE_TRAIN_SENTS
+        max_src_len: 1500 # exclude long sentences from training
+        max_trg_len: 350
 
         model: !Ref { path: train.tasks.0.model.encoder }
 
-        dev_tasks: # checkpoints to keep track of auxiliary task progress
+        dev_tasks: # dev checkpoints to keep track of auxiliary task progress
           - !AccuracyEvalTask
             eval_metrics: wer,cer
             src_file: '{DATA_EN}/fisher_cmvn_fbank40_dev.h5'
@@ -153,12 +153,12 @@ recipe4-twostage-improved: !Experiment
         batcher: !WordSrcBatcher
           avg_batch_size: 40
 
-        max_src_len: 350
-        max_trg_len: 350
         src_file: '{DATA}/fisher_train.es_filt.proc.noid'
         trg_file: '{DATA_EN}/fisher_train.en_filt.proc.noid'
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
         sample_train_sents: *SAMPLE_TRAIN_SENTS
+        max_src_len: 350 # exclude long sentences from training
+        max_trg_len: 350
 
         model: !DefaultTranslator
           src_embedder: !Ref { path: train.tasks.0.model.encoder.trg_embedder }
@@ -169,11 +169,11 @@ recipe4-twostage-improved: !Experiment
           src_reader: !PlainTextReader
             vocab: !Vocab
               _xnmt_id: char_vocab
-              vocab_file: '{VOCAB}/en-de-es-fr.lc.no-numbers-punct.vocab'
+              vocab_file: '{VOCAB}/en-de-es-fr.lc.no-numbers-punct.vocab' # character vocabulary
           trg_reader: !PlainTextReader
             vocab: !Ref { name: char_vocab }
 
-        dev_tasks: # checkpoints to keep track of auxiliary task progress
+        dev_tasks: # dev checkpoints to keep track of auxiliary task progress
           - !AccuracyEvalTask
             eval_metrics: bleu
             src_file: '{DATA}/fisher_dev.es_filt.proc.noid'
@@ -206,9 +206,8 @@ recipe4-twostage-improved: !Experiment
       model: !Ref { path: train.tasks.0.model }
       inference: !AutoRegressiveInference
         batcher: !Ref { name: inference_batcher_audio }
-        post_process: join-char
-        max_src_len: 1500
-        search_strategy: !BeamSearch
+        post_process: join-char # join characters to compute word-based BLEU score
+        search_strategy: !BeamSearch # beam search with length normalization
           beam_size: 15
           max_len: 350
           len_norm: !PolynomialNormalization

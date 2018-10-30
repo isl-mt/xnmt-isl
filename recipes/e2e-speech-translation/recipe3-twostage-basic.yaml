@@ -36,12 +36,12 @@ recipe3-twostage-basic: !Experiment
         dev_every: *DEV_EVERY
 
         # training data
-        max_src_len: 1500
-        max_trg_len: 350
         src_file: ['{DATA_EN}/fisher_cmvn_fbank40_train.h5', '{DATA}/fisher_train.es_filt.proc.noid']
         trg_file: '{DATA_EN}/fisher_train.en_filt.proc.noid'
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
         sample_train_sents: *SAMPLE_TRAIN_SENTS
+        max_src_len: 1500 # exclude long sentences from training
+        max_trg_len: 350
 
         # learning schedule and early stopping
         lr_decay: 0.5
@@ -54,16 +54,16 @@ recipe3-twostage-basic: !Experiment
         model: !DefaultTranslator
           src_embedder: !NoopEmbedder
             emb_dim: 40
-          encoder: !SymmetricTranslator
+          encoder: !SymmetricTranslator # the 'encoder' is the first stage of the 2-stage model, i.e. a full-fledged attentional ASR
             _xnmt_id: asr_symmetric_translator
-            mode: teacher
+            mode: teacher # teacher forcing
             src_embedder: !NoopEmbedder
               emb_dim: 40
             trg_embedder: !DenseWordEmbedder
               _xnmt_id: mt_src_embedder
               emb_dim: 512
               vocab: !Ref { name: char_vocab }
-            encoder: !ZhangSeqTransducer
+            encoder: !ZhangSeqTransducer # downsampling LSTM/NiN audio encoder
               input_dim: 40
               hidden_dim: 512
             attender: !MlpAttender
@@ -81,7 +81,7 @@ recipe3-twostage-basic: !Experiment
             trg_reader: !PlainTextReader
               vocab: !Vocab
                 _xnmt_id: char_vocab
-                vocab_file: '{VOCAB}/en-de-es-fr.lc.no-numbers-punct.vocab'
+                vocab_file: '{VOCAB}/en-de-es-fr.lc.no-numbers-punct.vocab' # character vocabulary
           attender: !MlpAttender
             _xnmt_id: mt_attender
             hidden_dim: 128
@@ -101,7 +101,7 @@ recipe3-twostage-basic: !Experiment
             word_dropout: 0.1
             vocab: !Ref { name: char_vocab }
             fix_norm: 1
-          src_reader: !CompoundReader
+          src_reader: !CompoundReader # compound src reader for supervised training of first stage
             _xnmt_id: compound_src_reader
             readers:
             - !H5Reader
@@ -147,16 +147,16 @@ recipe3-twostage-basic: !Experiment
 
         name: '{EXP}.asr'
 
-        max_src_len: 1500
-        max_trg_len: 350
         src_file: '{DATA_EN}/fisher_cmvn_fbank40_train.h5'
         trg_file: '{DATA}/fisher_train.es_filt.proc.noid'
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
         sample_train_sents: *SAMPLE_TRAIN_SENTS
+        max_src_len: 1500 # exclude long sentences from training
+        max_trg_len: 350
 
         model: !Ref { name: asr_symmetric_translator }
 
-        dev_tasks: # checkpoints to keep track of auxiliary task progress
+        dev_tasks: # dev checkpoints to keep track of auxiliary task progress
           - !AccuracyEvalTask
             eval_metrics: wer,cer
             src_file: '{DATA_EN}/fisher_cmvn_fbank40_dev.h5'
@@ -184,12 +184,12 @@ recipe3-twostage-basic: !Experiment
         batcher: !WordSrcBatcher
           avg_batch_size: 40
 
-        max_src_len: 350
-        max_trg_len: 350
         src_file: '{DATA}/fisher_train.es_filt.proc.noid'
         trg_file: '{DATA_EN}/fisher_train.en_filt.proc.noid'
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
         sample_train_sents: *SAMPLE_TRAIN_SENTS
+        max_src_len: 350 # exclude long sentences from training
+        max_trg_len: 350
 
         model: !DefaultTranslator
           src_embedder: !Ref { name: mt_src_embedder }
@@ -202,7 +202,7 @@ recipe3-twostage-basic: !Experiment
           trg_reader: !PlainTextReader
             vocab: !Ref { name: char_vocab }
 
-        dev_tasks: # checkpoints to keep track of auxiliary task progress
+        dev_tasks: # dev checkpoints to keep track of auxiliary task progress
           - !AccuracyEvalTask
             eval_metrics: bleu
             src_file: '{DATA}/fisher_dev.es_filt.proc.noid'
@@ -235,9 +235,8 @@ recipe3-twostage-basic: !Experiment
       model: !Ref { path: train.tasks.0.model }
       inference: !AutoRegressiveInference
         batcher: !Ref { name: inference_batcher_audio }
-        post_process: join-char
-        max_src_len: 1500
-        search_strategy: !BeamSearch
+        post_process: join-char # join characters to compute word-based BLEU score
+        search_strategy: !BeamSearch # beam search with length normalization
           beam_size: 15
           max_len: 350
           len_norm: !PolynomialNormalization

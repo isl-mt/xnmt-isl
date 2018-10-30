@@ -36,12 +36,12 @@ recipe1-direct-multitask: !Experiment
         dev_every: *DEV_EVERY
 
         # training data
-        max_src_len: 1500
-        max_trg_len: 350
         src_file: '{DATA_EN}/fisher_cmvn_fbank40_train.h5'
         trg_file: '{DATA_EN}/fisher_train.en_filt.proc.noid'
         sample_train_sents: *SAMPLE_TRAIN_SENTS
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
+        max_src_len: 1500 # exclude long sentences from training
+        max_trg_len: 350
 
         # learning schedule and early stopping
         lr_decay: 0.5
@@ -54,7 +54,7 @@ recipe1-direct-multitask: !Experiment
         model: !DefaultTranslator
           src_embedder: !NoopEmbedder
             emb_dim: 40
-          encoder: !ZhangSeqTransducer
+          encoder: !ZhangSeqTransducer # downsampling LSTM/NiN audio encoder
             _xnmt_id: task1_encoder
             input_dim: 40
             hidden_dim: 512
@@ -82,8 +82,9 @@ recipe1-direct-multitask: !Experiment
           trg_reader: !PlainTextReader
             vocab: !Vocab
               _xnmt_id: char_vocab
-              vocab_file: '{VOCAB}/en-de-es-fr.lc.no-numbers-punct.vocab'
-        dev_tasks:
+              vocab_file: '{VOCAB}/en-de-es-fr.lc.no-numbers-punct.vocab' # character vocabulary
+
+        dev_tasks: # dev checkpoints that determine LR decay and early stopping
           - !AccuracyEvalTask
             eval_metrics: bleu
             src_file: '{DATA_EN}/fisher_cmvn_fbank40_dev.h5'
@@ -118,9 +119,8 @@ recipe1-direct-multitask: !Experiment
       model: !Ref { path: train.tasks.0.model }
       inference: !AutoRegressiveInference
         batcher: !Ref { name: inference_batcher_audio }
-        post_process: join-char
-        max_src_len: 1500
-        search_strategy: !BeamSearch
+        post_process: join-char # join characters to compute word-based BLEU score
+        search_strategy: !BeamSearch # beam search with length normalization
           beam_size: 15
           max_len: 350
           len_norm: !PolynomialNormalization
