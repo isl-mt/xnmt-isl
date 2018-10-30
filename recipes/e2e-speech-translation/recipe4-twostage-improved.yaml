@@ -1,5 +1,11 @@
-# Improved two-stage model, pretrained using recipe 3
-# Needs to pass the proper path to the pretrained model below.
+# Improved two-stage model.
+#
+# A two-stage end-to-end model with improvements that address error propagation issues.
+# Yields strongest results both when lots of end-to-end data is available and works well when trained on less end-to-end data.
+# Around >30k end-to-end sentences are needed for good results.
+#
+# This is pretrained using recipe 3, need to pass the proper path to the pretrained model below.
+
 recipe4-twostage-improved: !Experiment
   exp_global: !ExpGlobal
     dropout: 0.3
@@ -8,20 +14,27 @@ recipe4-twostage-improved: !Experiment
     placeholders:
       PRETRAINED_MOD: <paste path of model from recipe 3 here>
 
+      # Holds the Fisher Spanish-to-English data:
       DATA: /project/iwslt2015b/project/nmt-audio/data/es
       DATA_EN: /project/iwslt2015b/project/nmt-audio/data/es-en
       VOCAB: /project/iwslt2015b/project/nmt-audio/data/vocab
+
+      # At each epoch, only a half of the data is loaded into memory so as to keep RAM requirements down.
       SAMPLE_TRAIN_SENTS_: &SAMPLE_TRAIN_SENTS 69360
-      MAX_NUM_TRAIN_SENTS_: &MAX_NUM_TRAIN_SENTS ~
       DEV_EVERY_: &DEV_EVERY 69360
+      MAX_NUM_TRAIN_SENTS_: &MAX_NUM_TRAIN_SENTS ~
+
+      # Early stopping will cause training to finish much earlier than this.
       RUN_FOR_EPOCHS_: &RUN_FOR_EPOCHS 500
+
   train: !SameBatchMultiTaskTrainingRegimen
     trainer: !AdamTrainer
       alpha: 0.0001
       skip_noisy: True
     dev_zero: True
     tasks:
-    - !SimpleTrainingTask
+
+    - !SimpleTrainingTask # Speech translation task, using the full two-stage model.
       kwargs: &task1
         name: '{EXP}.st'
         run_for_epochs: *RUN_FOR_EPOCHS
@@ -87,7 +100,8 @@ recipe4-twostage-improved: !Experiment
             model: !Ref { path: train.tasks.0.model }
             batcher: !Ref { name: inference_batcher_audio }
             max_num_sents: 1000
-    - !SimpleTrainingTask
+
+    - !SimpleTrainingTask # ASR auxiliary task, uses the first stage of the 2-stage model.
       kwargs:
         << : *task1
         name: '{EXP}.asr'
@@ -117,7 +131,8 @@ recipe4-twostage-improved: !Experiment
             model: !Ref { path: train.tasks.0.model.encoder }
             batcher: !Ref { name: inference_batcher_audio }
             max_num_sents: 1000
-    - !SimpleTrainingTask
+
+    - !SimpleTrainingTask # Auxiliary MT task, uses the second stage of the 2-stage model.
       kwargs:
         << : *task1
         name: '{EXP}.mt'
@@ -164,6 +179,7 @@ recipe4-twostage-improved: !Experiment
             model: !Ref { path: train.tasks.2.model }
             batcher: !Ref { name: inference_batcher_text }
             max_num_sents: 1000
+            
   evaluate:
     - !AccuracyEvalTask
       eval_metrics: bleu
