@@ -1,0 +1,107 @@
+# A small English-to-German system trained on TED, EPPS, and lecture data.
+# Features noised training source sentences and BPE on the target side.
+#
+# Uses no beam search and a fast encoder model to allow usage in lecture translator.
+#
+lt-ende: !Experiment
+  exp_global: !ExpGlobal
+
+    # global model settings
+    dropout: 0.5
+    default_layer_dim: 512
+    save_num_checkpoints: 3
+    loss_comb_method: avg
+
+    # holds preprocessed data
+    placeholders:
+      DATA: /project/iwslt2015b/project/nmt-audio/exp-xnmt/20.lt/data
+
+  model: !DefaultTranslator # attentional enc-dec model with transformer on encoder side, LSTM on decoder side.
+    src_reader: !PlainTextReader
+      vocab: !Vocab {vocab_file: '{DATA}/concat.en.swfl.vocab'}
+    trg_reader: !PlainTextReader
+      vocab: !Vocab {vocab_file: '{DATA}/concat.de.bpe.swfl.vocab'}
+      output_proc: join-bpe
+    src_embedder: !SimpleWordEmbedder
+      emb_dim: 512
+    encoder: !ModularSeqTransducer
+      modules:
+      - !PositionalSeqTransducer
+        input_dim: 512
+        max_pos: 100
+      - !ModularSeqTransducer
+        modules: !Repeat
+          times: 3
+          content: !ModularSeqTransducer
+            modules:
+            - !ResidualSeqTransducer
+              input_dim: 512
+              child: !MultiHeadAttentionSeqTransducer
+                num_heads: 8
+              layer_norm: True
+            - !ResidualSeqTransducer
+              input_dim: 512
+              child: !TransformSeqTransducer
+                transform: !MLP
+                  activation: relu
+              layer_norm: True
+    attender: !MlpAttender
+      hidden_dim: 512
+      state_dim: 512
+      input_dim: 512
+    trg_embedder: !SimpleWordEmbedder
+      emb_dim: 512
+    decoder: !AutoRegressiveDecoder
+      rnn: !UniLSTMSeqTransducer
+        layers: 1
+      transform: !AuxNonLinear
+        output_dim: 512
+        activation: 'tanh'
+      scorer: !Softmax
+        label_smoothing: 0.1
+      bridge: !CopyBridge {}
+
+  train: !SimpleTrainingRegimen
+
+    src_file: '{DATA}/concat.en.noised'
+    trg_file: '{DATA}/concat.de.bpe'
+
+    trainer: !NoamTrainer # Adam, with schedule from the transformer paper
+      alpha: 1.0
+      warmup_steps: 4000
+    run_for_epochs: 20
+    batcher: !WordSrcBatcher
+      avg_batch_size: 256
+    update_every: 4 # simulated large batch training
+
+    # dev checkpoints to determine learning schedule and early stopping
+    dev_tasks:
+      - !AccuracyEvalTask
+        eval_metrics: bleu
+        src_file: '{DATA}/preproIWSLT.tst2014.en'
+        ref_file: '{DATA}/preproIWSLT.tst2014.de'
+        hyp_file: '{EXP_DIR}/hyp/{EXP}.dev_hyp'
+        inference: !AutoRegressiveInference
+          batcher: !InOrderBatcher { batch_size: 1 }
+          max_src_len: 50
+          max_num_sents: 1000
+          # no beam search for auxiliary tasks
+          search_strategy: !BeamSearch
+            max_len: 50
+      - !LossEvalTask
+        src_file: '{DATA}/preproIWSLT.tst2014.en'
+        ref_file: '{DATA}/preproIWSLT.tst2014.de'
+
+  # evaluate final model on tst2014
+  evaluate:
+    - !AccuracyEvalTask
+      eval_metrics: bleu
+      src_file: '{DATA}/preproIWSLT.tst2014.en'
+      ref_file: '{DATA}/preproIWSLT.tst2014.de'
+      hyp_file: '{EXP_DIR}/hyp/{EXP}.eval_hyp'
+      inference: !AutoRegressiveInference
+        batcher: !InOrderBatcher { batch_size: 1 }
+        search_strategy: !BeamSearch
+          max_len: 50
+          beam_size: 1 # beam size 1 so that this can be used with real-time lecture translation setting.
+
