@@ -1,7 +1,7 @@
 # Direct single-task model
 #
 # A single-task encoder-decoder model, does not yield good results but is included as a baseline.
-
+#
 recipe1-direct-multitask: !Experiment
   exp_global: !ExpGlobal
     dropout: 0.3
@@ -32,19 +32,25 @@ recipe1-direct-multitask: !Experiment
         run_for_epochs: *RUN_FOR_EPOCHS
         batcher: !WordSrcBatcher
           avg_batch_size: 36
-          pad_src_to_multiple: 4
+          pad_src_to_multiple: 4 # to support 4x downsampling
+        dev_every: *DEV_EVERY
+
+        # training data
         max_src_len: 1500
         max_trg_len: 350
         src_file: '{DATA_EN}/fisher_cmvn_fbank40_train.h5'
         trg_file: '{DATA_EN}/fisher_train.en_filt.proc.noid'
         sample_train_sents: *SAMPLE_TRAIN_SENTS
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
+
+        # learning schedule and early stopping
         lr_decay: 0.5
         lr_decay_times: 1
         patience: 5
         initial_patience: 10
-        dev_every: *DEV_EVERY
         restart_trainer: True
+
+        # model definition
         model: !DefaultTranslator
           src_embedder: !NoopEmbedder
             emb_dim: 40
@@ -102,7 +108,8 @@ recipe1-direct-multitask: !Experiment
             ref_file: '{DATA_EN}/fisher_dev.en.0_filt.proc.noid'
             model: !Ref { path: train.tasks.0.model }
             batcher: !Ref { path: train.tasks.0.batcher }
-  evaluate:
+
+  evaluate: # Evaluate loss and single-reference BLEU score for final model on Fisher/Test
     - !AccuracyEvalTask
       eval_metrics: bleu
       src_file: '{DATA_EN}/fisher_cmvn_fbank40_test.h5'

@@ -5,7 +5,7 @@
 # Around >30k end-to-end sentences are needed for good results.
 #
 # This is pretrained using recipe 3, need to pass the proper path to the pretrained model below.
-
+#
 recipe4-twostage-improved: !Experiment
   exp_global: !ExpGlobal
     dropout: 0.3
@@ -38,21 +38,28 @@ recipe4-twostage-improved: !Experiment
       kwargs: &task1
         name: '{EXP}.st'
         run_for_epochs: *RUN_FOR_EPOCHS
-        max_num_train_sents: *MAX_NUM_TRAIN_SENTS
-        lr_decay: 0.5
-        lr_decay_times: 1
-        patience: 5
-        initial_patience: 10
-        dev_every: *DEV_EVERY
-        restart_trainer: True
-        loss_calculator: !FeedbackLoss {}
         batcher: !WordSrcBatcher
           avg_batch_size: 24
-          pad_src_to_multiple: 4
+          pad_src_to_multiple: 4 # to support 4x downsampling
+        dev_every: *DEV_EVERY
+
+        # training data
         max_src_len: 1500
         max_trg_len: 350
         src_file: ['{DATA_EN}/fisher_cmvn_fbank40_train.h5', '{DATA}/fisher_train.es_filt.proc.noid']
         trg_file: '{DATA_EN}/fisher_train.en_filt.proc.noid'
+        max_num_train_sents: *MAX_NUM_TRAIN_SENTS
+        sample_train_sents: *SAMPLE_TRAIN_SENTS
+
+        # learning schedule and early stopping
+        lr_decay: 0.5
+        lr_decay_times: 1
+        patience: 5
+        initial_patience: 10
+        restart_trainer: True
+
+        # model definition (pretrained model with some modifications)
+        loss_calculator: !FeedbackLoss {}
         model: !LoadSerialized
           filename: '{PRETRAINED_MOD}'
           path: train.tasks.0.model
@@ -73,6 +80,8 @@ recipe4-twostage-improved: !Experiment
             val: 1.0
           - path: encoder.transducer_loss
             val: False
+
+        # dev checkpoints that determine LR decay and early stopping
         dev_tasks:
           - !AccuracyEvalTask
             eval_metrics: bleu
@@ -103,16 +112,20 @@ recipe4-twostage-improved: !Experiment
 
     - !SimpleTrainingTask # ASR auxiliary task, uses the first stage of the 2-stage model.
       kwargs:
-        << : *task1
+        << : *task1 # copy settings from ST task, then overwrite the appropriate settings
+
         name: '{EXP}.asr'
+
         max_src_len: 1500
         max_trg_len: 350
         src_file: '{DATA_EN}/fisher_cmvn_fbank40_train.h5'
         trg_file: '{DATA}/fisher_train.es_filt.proc.noid'
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
         sample_train_sents: *SAMPLE_TRAIN_SENTS
+
         model: !Ref { path: train.tasks.0.model.encoder }
-        dev_tasks:
+
+        dev_tasks: # checkpoints to keep track of auxiliary task progress
           - !AccuracyEvalTask
             eval_metrics: wer,cer
             src_file: '{DATA_EN}/fisher_cmvn_fbank40_dev.h5'
@@ -134,16 +147,19 @@ recipe4-twostage-improved: !Experiment
 
     - !SimpleTrainingTask # Auxiliary MT task, uses the second stage of the 2-stage model.
       kwargs:
-        << : *task1
+        << : *task1 # copy settings from ST task, then overwrite the appropriate settings
+
         name: '{EXP}.mt'
+        batcher: !WordSrcBatcher
+          avg_batch_size: 40
+
         max_src_len: 350
         max_trg_len: 350
         src_file: '{DATA}/fisher_train.es_filt.proc.noid'
         trg_file: '{DATA_EN}/fisher_train.en_filt.proc.noid'
         max_num_train_sents: *MAX_NUM_TRAIN_SENTS
         sample_train_sents: *SAMPLE_TRAIN_SENTS
-        batcher: !WordSrcBatcher
-          avg_batch_size: 40
+
         model: !DefaultTranslator
           src_embedder: !Ref { path: train.tasks.0.model.encoder.trg_embedder }
           encoder: !Ref { path: train.tasks.0.model.encoder.dec_lstm }
@@ -156,7 +172,8 @@ recipe4-twostage-improved: !Experiment
               vocab_file: '{VOCAB}/en-de-es-fr.lc.no-numbers-punct.vocab'
           trg_reader: !PlainTextReader
             vocab: !Ref { name: char_vocab }
-        dev_tasks:
+
+        dev_tasks: # checkpoints to keep track of auxiliary task progress
           - !AccuracyEvalTask
             eval_metrics: bleu
             src_file: '{DATA}/fisher_dev.es_filt.proc.noid'
@@ -179,8 +196,8 @@ recipe4-twostage-improved: !Experiment
             model: !Ref { path: train.tasks.2.model }
             batcher: !Ref { name: inference_batcher_text }
             max_num_sents: 1000
-            
-  evaluate:
+
+  evaluate: # Evaluate loss and single-reference BLEU score for final model on Fisher/Test
     - !AccuracyEvalTask
       eval_metrics: bleu
       src_file: ['{DATA_EN}/fisher_cmvn_fbank40_test.h5', '{DATA}/fisher_test.es_filt.proc.noid']
