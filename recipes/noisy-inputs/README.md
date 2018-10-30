@@ -9,3 +9,6 @@ This can be done as a preprocessing step by calling the following script on the 
 
 This causes 5% of perturbation which is usually a safe value to use.
 
+The simplified variant that produces only deletion errors can be applied by:
+
+    python script/custom/perturb_seq.py -o "0 0 1" 0.05 examples/data/dev.en
