@@ -28,7 +28,7 @@ recipe5-hybrid-interleaved-gaussian: !Experiment
         downsample_factor: 2
         ff_hidden_dim: 512
         max_len: 1500
-        diag_gauss_mask: 3
+        diag_gauss_mask: 10.0 # 'large' initial value from the paper, works much better than e.g. 3 (small initial value)
         ff_lstm: True
         square_mask_std: True
       - !SAAMSeqTransducer # self-attentional layer at the top
@@ -37,7 +37,7 @@ recipe5-hybrid-interleaved-gaussian: !Experiment
         hidden_dim: 512
         downsample_factor: 1
         ff_hidden_dim: 512
-        diag_gauss_mask: 3
+        diag_gauss_mask: 10.0
         ff_lstm: True
         square_mask_std: True
 
