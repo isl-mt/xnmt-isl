@@ -22,7 +22,7 @@ recipe4-hybrid-interleaved-diagmask: !Experiment
 
     encoder: !ModularSeqTransducer # defines the self-attentional encoder / acoustic model
       modules:
-      - !TransformerSeqTransducer # 2 downsampling self-attentional layers
+      - !SAAMSeqTransducer # 2 downsampling self-attentional layers
         layers: 2
         input_dim: 40
         hidden_dim: 512
@@ -31,7 +31,7 @@ recipe4-hybrid-interleaved-diagmask: !Experiment
         max_len: 1500
         ff_lstm: True
         diagonal_mask_width: 3
-      - !TransformerSeqTransducer # LSTM layer at the top
+      - !SAAMSeqTransducer # self-attentional layer at the top
         layers: 1
         input_dim: 512
         hidden_dim: 512
@@ -46,13 +46,15 @@ recipe4-hybrid-interleaved-diagmask: !Experiment
       emb_dim: 64
       word_dropout: 0.1
       fix_norm: 1
-    decoder: !MlpSoftmaxDecoder
-      layers: 1
-      lstm_dim: 512
-      input_feeding: True
+    decoder: !AutoRegressiveDecoder
+      rnn: !UniLSTMSeqTransducer
+        layers: 1
+      transform: !AuxNonLinear
+        output_dim: 512
+        activation: 'tanh'
       bridge: !NoBridge {}
-      label_smoothing: 0.1
-    src_reader: !ContVecReader
+      scorer: !Softmax { label_smoothing: 0.1 }
+    src_reader: !NpzReader
       transpose: true
       feat_from: 0
       feat_to: 40
@@ -70,7 +72,6 @@ recipe4-hybrid-interleaved-diagmask: !Experiment
     batcher: !WordSrcBatcher
       avg_batch_size: 18
       pad_src_to_multiple: 4 # character output vocabulary
-      src_pad_token: ~
     trainer: !AdamTrainer
       alpha: 0.0003
     lr_decay: 0.5
@@ -86,7 +87,7 @@ recipe4-hybrid-interleaved-diagmask: !Experiment
         src_file: &dev_src '{DATA_DIR}/dev/src.contvec.npz'
         ref_file: '{DATA_DIR}/dev/src.txt'
         hyp_file: '{EXP_DIR}/models/{EXP}.dev_hyp'
-        inference: !SimpleInference
+        inference: !AutoRegressiveInference
           post_process: join-char
           search_strategy: !BeamSearch
             beam_size: 20
@@ -104,7 +105,7 @@ recipe4-hybrid-interleaved-diagmask: !Experiment
       src_file: &test_src '{DATA_DIR}/test/src.contvec.npz'
       ref_file: '{DATA_DIR}/test/src.txt'
       hyp_file: '{EXP_DIR}/models/{EXP}.test_hyp'
-      inference: !SimpleInference
+      inference: !AutoRegressiveInference
         post_process: join-char
         search_strategy: !BeamSearch
           beam_size: 20
