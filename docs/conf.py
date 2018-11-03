@@ -25,9 +25,9 @@ os.symlink('../examples', examples_folder)
 
 # -- Project information -----------------------------------------------------
 
-project = 'xnmt'
-copyright = '2018, xnmt team'
-author = 'xnmt team'
+project = '[isl] xnmt'
+copyright = '2018, isl'
+author = 'isl'
 
 # The short X.Y version
 version = ''
@@ -143,8 +143,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'xnmt.tex', 'xnmt Documentation',
-     'xnmt team', 'manual'),
+    (master_doc, 'xnmt.tex', '[isl] xnmt Documentation',
+     'isl', 'manual'),
 ]
 
 
